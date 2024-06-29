@@ -22,6 +22,10 @@ bb -m base16/-main --template template.mustache --scheme scheme.yaml \
 Just grab the `base16-builder-bb` from the releases, put somewhere in your `$PATH`,
 make it executable and you're good to go.
 
+### Requirements
+
+* babashka
+
 ## Installing from source
 
 Just run:
@@ -47,5 +51,5 @@ future.
 * [ ] add option to build whole dir with templates like newer builders
 * [ ] arguments like `--version`, `--help`
 * [ ] arguments validation
-* ~~[ ] build single binary from the project~~
+* [ ] ~~build single binary from the project~~
 * [x] build single script from the project
