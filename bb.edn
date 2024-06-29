@@ -1,3 +1,113 @@
-{:paths ["src"]
- :deps {org.babashka/cli {:mvn/version "0.4.39"}
+{:tasks {:init (def MAIN-NS "base16.core")
+
+         run (do
+               (require [(symbol MAIN-NS)])
+               (apply
+                (ns-resolve (find-ns (symbol MAIN-NS)) (symbol "-main"))
+                *command-line-args*))
+
+         run-clj {:depends [ensure-bb-submodule]
+                  :task (deref (process (concat ["clj" "-m" MAIN-NS] *command-line-args*)
+                                        {:inherit true}))}
+
+         build {:depends [ensure-bb-submodule ensure-graalvm]
+                :task (shell {:extra-env EXTRA-ENV}
+                             (str "clj -X:native-image '{:main-ns \"" MAIN-NS "\"} "))}
+
+         native-image {:depends [build]}
+
+         ensure-bb-submodule (shell "git submodule update --init --recursive")
+
+         ensure-graalvm {:task (when-not
+                                (->> "which native-image"
+                                     (shell {:continue true
+                                             :out nil :err nil
+                                             :extra-env EXTRA-ENV})
+                                     (:exit)
+                                     (= 0))
+                                 (babashka.tasks/run "install-graalvm"))}
+
+         uberjar-bb (do (shell "mkdir -p classes/")
+                        (println "bbb: Compiling" MAIN-NS)
+                        (deref (process ["clj" "-e"
+                                         (str "(require '" MAIN-NS ")"
+                                              "(compile '" MAIN-NS ")")]))
+                        (println "bbb: Building uberjar to" (str MAIN-NS ".jar"))
+                        (deref (process ["bb" "-cp" (str (->> (shell {:out :string} "clojure -Spath")
+                                                              :out str/trim)
+                                                         ":classes")
+                                         "uberjar"
+                                         (str MAIN-NS ".jar") "-m" MAIN-NS])))
+
+         uberjar-clj (do (deref (process ["clj" "-X:uberjar" ":jar" (str MAIN-NS ".jar")
+                                          ":main-class" MAIN-NS]
+                                         {:inherit true})))
+
+         uberjar (do
+                   (println "bbb: Building a JVM Clojure uberjar, use uberjar-bb instead for a babashka uberjar")
+                   (babashka.tasks/run "uberjar-clj"))
+
+         install-graalvm (bbb/install-graalvm-locally (str (fs/canonicalize "vendor/graalvm")))
+
+         :enter (let [suffix (when (= (System/getProperty "os.name") "Mac OS X") "/Contents/Home")
+                      graalpath (str (fs/canonicalize (str "vendor/graalvm" suffix)))]
+                  (def LOCAL-GRAAL (when (-> (str graalpath "/bin/native-image") io/file .exists)
+                                     (-> graalpath fs/canonicalize str)))
+                  (def EXTRA-ENV
+                    (if LOCAL-GRAAL
+                      {"PATH" (str graalpath "/bin" ":" (System/getenv "PATH"))
+                       "GRAALVM_HOME" graalpath}
+                      {})))
+
+         :requires [[babashka.process :refer [process]]
+                    [bbb.core :as bbb]
+                    [clojure.java.io :as io]
+                    [clojure.string :as str]
+                    [babashka.fs :as fs]]}
+
+ :aliases {:native-image
+           {:exec-args {:main-ns "example.core"} ;; example.core is a default, is overridden by MAIN-NS
+            :exec-fn bbb.dep-edn-alias/tools-deps-entrypoint
+            :jvm-opts ["-Dclojure.compiler.direct-linking=true"
+                       ;; ;; consider uncommenting the below options when building in docker or low mem envs
+                       ;; "-Dnative" "-Dnative-image.docker-build=true" "-Dnative-image.xmx=4g"
+                       "-Dclojure.spec.skip-macros=true"]
+            :extra-deps
+            {clj.native-image/clj.native-image
+             {:git/url "https://github.com/taylorwood/clj.native-image.git"
+              :sha "4604ae76855e09cdabc0a2ecc5a7de2cc5b775d6"}}}
+
+           :uberjar
+           {:replace-deps {com.github.seancorfield/depstar {:mvn/version "2.1.303"}}
+            :exec-fn      hf.depstar/uberjar
+            :exec-args    {:jar "uber.jar"
+                           :aot true}}}
+ :paths ["src"]
+ :deps {borkdude/spartan.spec {:git/url "https://github.com/borkdude/spartan.spec"
+                               :sha "12947185b4f8b8ff8ee3bc0f19c98dbde54d4c90"}
+        selmer/selmer {:mvn/version "1.12.44"},
+        org.clojure/clojure {:mvn/version "1.11.0-alpha1"},
+        org.clojure/tools.logging {:mvn/version "1.1.0"},
+        org.clojure/tools.cli {:mvn/version "1.0.206"},
+        rewrite-clj/rewrite-clj {:mvn/version "1.0.699-alpha"},
+        hiccup/hiccup {:mvn/version "2.0.0-alpha2"},
+        org.clojure/data.xml {:mvn/version "0.2.0-alpha6"},
+        org.clojure/data.csv {:mvn/version "1.0.0"},
+        com.taoensso/timbre {:mvn/version "5.1.2"},
+        com.cognitect/transit-clj {:mvn/version "1.0.324"},
+        babashka/babashka.curl {:mvn/version "0.0.3"},
+        clj-commons/clj-yaml {:mvn/version "0.7.107"},
+        cheshire/cheshire {:mvn/version "5.10.1"},
+        org.clojure/core.match {:mvn/version "1.0.0"},
+        org.clojure/test.check {:mvn/version "1.1.0"},
+        babashka/fs {:mvn/version "0.0.5"},
+        nrepl/bencode {:mvn/version "1.1.0"},
+        org.clojure/core.async {:mvn/version "1.4.627"},
+        ;; added deps
+        babashka/babashka {:local/root "vendor/babashka"}
+
+        cli-matic/cli-matic {:git/url "https://github.com/l3nz/cli-matic.git"
+                             :sha "1aa64070fec1556998b5bbb95d72f3513667ff6a"}
+        http-kit/http-kit {:mvn/version "2.5.3"}
+        org.babashka/cli {:mvn/version "0.4.39"}
         pogonos/pogonos {:mvn/version "0.2.1"}}}
