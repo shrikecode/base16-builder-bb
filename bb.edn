@@ -1,3 +1,21 @@
 {:paths ["src"]
  :deps {org.babashka/cli {:mvn/version "0.4.39"}
-        pogonos/pogonos {:mvn/version "0.2.1"}}}
+        pogonos/pogonos {:mvn/version "0.2.1"}}
+ :tasks {:requires ([babashka.fs :as fs]
+                    [babashka.cli :as cli]
+                    [clojure.string :as str])
+         build (do
+                 (fs/delete-if-exists "bin/base16-builder-bb")
+                 (fs/delete-if-exists "bin/base16-builder-bb-raw") ;; if build fails, this file will be left
+                 (shell "bb uberscript bin/base16-builder-bb-raw -m base16.core/-main")
+                 (spit "bin/base16-builder-bb" (str "#!/usr/bin/env bb\n" (slurp "bin/base16-builder-bb-raw")))
+                 (fs/set-posix-file-permissions "bin/base16-builder-bb" "rwxr-xr-x")
+                 (fs/delete-if-exists "bin/base16-builder-bb-raw"))
+         install (let [{:keys [destdir]} (cli/parse-opts *command-line-args*)]
+                      (try
+                        (if destdir
+                          (fs/copy "bin/base16-builder-bb" destdir)
+                          (fs/copy "bin/base16-builder-bb" "/usr/local/bin/base16-builder-bb"))
+                      (catch Exception e
+                        (println "Error: You need to run this task as root or provide an existing directory that can be accessed by your user."))))
+         }}

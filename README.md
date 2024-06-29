@@ -31,15 +31,19 @@ make it executable and you're good to go.
 Just run:
 
 ``` sh
-make
-sudo make install
+bb build # creates a script in ./bin of the project
+sudo bb install # copies the script to /usr/local/bin
+```
+
+To install in custom dir (e.g.: your local user scripts dir):
+
+``` sh
+bb install --destdir ~/.local/bin
 ```
 
 ### Build requirements
 
 * babashka
-* make
-* git (obviously)
 
 ## Note
 
