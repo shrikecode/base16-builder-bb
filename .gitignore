@@ -1,2 +1,10 @@
-/.clj-kondo/
-/.lsp/
+classes/
+.clj-kondo/
+.cpcache/
+.lsp/
+*.build_artifacts.txt
+bbb
+bb
+reports/
+vendor/graalvm
+/bin/base16-builder-bb
