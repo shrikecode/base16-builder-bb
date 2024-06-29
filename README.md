@@ -1,9 +1,9 @@
 
 # base16 builder in babashka
 
-It is kind of toy project to make base16 theme builder in Clojure, and since it's
-a command-line tool, why not use babashka? For now you need to clone the whole
-repo and run it like this:
+It is kind of toy project to make base16 theme builder in Clojure, and since
+it's a command-line tool, why not use babashka? For migh clone the whole repo
+and run it like this:
 
 ``` sh
 cat scheme.yaml | bb -m base16/-main --template template.mustache \
@@ -17,7 +17,34 @@ bb -m base16/-main --template template.mustache --scheme scheme.yaml \
     > colorscheme.vim
 ```
 
+## Installation
+
+Just grab the `base16-builder-bb` from the releases, put somewhere in your `$PATH`
+and you're good to go.
+
+## Installing from source
+
+Just run:
+
+``` sh
+make
+sudo make install
+```
+
+### Build requirements
+
+* babashka
+* make
+* git (obviously)
+
+## Note
+
+It is very barebones for now, will add some arguments and error handling in the
+future.
+
 ## Roadmap
 
 * [ ] add option to build whole dir with templates like newer builders
-* [ ] build single binary from the project
+* [ ] arguments like `--version`, `--help`
+* [ ] arguments validation
+* [x] build single binary from the project
